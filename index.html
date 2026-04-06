@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AP Smart Policing — Unit Performance Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f0f4f8;font-family:'Segoe UI',Tahoma,sans-serif;font-size:13px}
+.wrap{max-width:1300px;margin:0 auto;padding:12px 14px}
+.header{background:linear-gradient(135deg,#0f2a52,#1e40af);border-radius:14px;padding:18px 24px;margin-bottom:14px;color:#fff;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.header-title{font-size:20px;font-weight:800;letter-spacing:.3px}
+.header-sub{opacity:.8;font-size:12px;margin-top:3px}
+.stat-box{text-align:center;background:rgba(255,255,255,.12);border-radius:10px;padding:10px 18px;margin-left:auto}
+.stat-box .num{font-size:28px;font-weight:800}
+.stat-box .lbl{font-size:11px;opacity:.7}
+.alert{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#92400e}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:8px 18px;border-radius:8px;border:none;font-weight:600;font-size:13px;background:#fff;color:#374151;box-shadow:0 1px 3px rgba(0,0,0,.1);cursor:pointer}
+.tab.active{background:#1e40af;color:#fff;box-shadow:0 2px 8px rgba(30,64,175,.35)}
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 6px rgba(0,0,0,.08);margin-bottom:16px}
+.card-title{font-weight:700;font-size:15px;margin-bottom:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+table{border-collapse:collapse;width:100%}
+th{padding:9px 8px;text-align:center;font-size:11px}
+td{padding:7px 8px;text-align:center;font-size:12px}
+.tbl-hdr{background:#0f2a52;color:#fff}
+.tbl-hdr th{white-space:nowrap}
+tr.clickable{cursor:pointer}
+tr.clickable:hover{background:#e8f0fe!important}
+.badge{display:inline-block;border-radius:6px;padding:2px 9px;font-weight:700}
+.rank-badge{border-radius:5px;padding:2px 7px;font-weight:700;font-size:11px}
+.grade-A{color:#059669;background:#d1fae5}
+.grade-B{color:#0284c7;background:#e0f2fe}
+.grade-C{color:#d97706;background:#fef3c7}
+.grade-D{color:#ea580c;background:#ffedd5}
+.grade-E{color:#dc2626;background:#fee2e2}
+.up{color:#059669;font-weight:700}
+.dn{color:#dc2626;font-weight:700}
+.new-badge{font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 5px;font-weight:700}
+.na{color:#d1d5db;font-size:10px}
+select{padding:8px 14px;border-radius:8px;border:1px solid #d1d5db;font-size:13px;cursor:pointer}
+.legend{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.legend span{border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px}
+.ovx{overflow-x:auto}
+.ovxy{overflow-x:auto;overflow-y:auto;max-height:70vh}
+/* bar chart */
+.bar-chart{width:100%;overflow-x:auto}
+.bar-chart svg{display:block}
+/* hero card */
+.hero{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:16px}
+.hero-grade{border-radius:14px;padding:14px 28px;text-align:center;min-width:100px}
+.hero-grade .g{font-size:46px;font-weight:900;line-height:1}
+.hero-grade .s{font-size:20px;font-weight:700}
+.cat-grid{display:grid;grid-template-columns:repeat(4,auto);gap:8px 20px}
+.sort-btns{display:flex;gap:8px;align-items:center;margin-left:auto}
+.sort-btn{padding:4px 10px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#e5e7eb;color:#374151}
+.sort-btn.active{background:#1e40af;color:#fff}
+.wk-btn{padding:10px 20px;border-radius:9px;border:none;cursor:pointer;font-weight:700;font-size:13px;background:#fff;color:#374151;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.wk-btn.active{background:#1e40af;color:#fff;box-shadow:0 2px 8px rgba(30,64,175,.35)}
+.new-card{border-radius:10px;padding:12px 20px;text-align:center;min-width:140px;display:inline-block;margin:6px}
+/* sticky heatmap header */
+.heat-sticky-col{position:sticky;left:0;background:#fff;z-index:1;border-right:1px solid #e5e7eb}
+.heat-hdr-sticky{position:sticky;left:0;z-index:11}
+/* radar */
+.radar-wrap{display:flex;justify-content:center}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const D=["ASR","Anakapalli","Ananthapuram","Annamayya","Bapatla","Chittoor","Konaseema","East Godavari","Eluru","GRP Guntakal","GRP Vijayawada","Guntur","Kakinada","Krishna","Kurnool","Markapuram","Nandyal","NTR","Palnadu","PVP Manyam","Polavaram","Prakasam","SPSR Nellore","Sri Sathya Sai","Srikakulam","Tirupathi","Visakhapatnam","Vizianagaram","West Godavari","YSR Kadapa"];
+const PARAMS=[
+  {k:"pme", l:"MedLEaPR PME",                       w:5,  lb:0,cat:"MedLEaPR", nul:"zero",   wk:1},
+  {k:"mlc", l:"MedLEaPR MLC",                       w:5,  lb:0,cat:"MedLEaPR", nul:"zero",   wk:1},
+  {k:"ng",  l:"NATGRID",                            w:10, lb:0,cat:"NATGRID",  nul:"zero",   wk:1,sq:1},
+  {k:"dgsp",l:"DGP Dashboard",                      w:5,  lb:0,cat:"CCTNS",    nul:"neutral",wk:0},
+  {k:"ctd", l:"CCTNS Overall Forms Entry",          w:10, lb:0,cat:"CCTNS",    nul:"neutral",wk:0,cap:15},
+  {k:"cwk", l:"CCTNS Weekly Forms Entry",           w:5,  lb:0,cat:"CCTNS",    nul:"neutral",wk:1},
+  {k:"cpp", l:"Pending Petitions in Citizen Portal",w:5,  lb:1,cat:"CCTNS",    nul:"neutral",wk:0},
+  {k:"crim",l:"CriMAC Alerts",                      w:5,  lb:0,cat:"CriMAC",   nul:"zero",   wk:1,sq:1},
+  {k:"esak",l:"eSakshya SID%",                      w:10, lb:0,cat:"eSakshya", nul:"neutral",wk:0},
+  {k:"ceir",l:"CEIR Score",                         w:10, lb:0,cat:"CEIR",     nul:"neutral",wk:0},
+  {k:"d100t",l:"Dial112 Tab% Disconn",              w:5,  lb:1,cat:"Dial 112", nul:"neutral",wk:1},
+  {k:"d100r",l:"Dial112 Resp.Time",                 w:5,  lb:1,cat:"Dial 112", nul:"neutral",wk:1,cap:30},
+  {k:"drn", l:"Drone Flying Hours",                 w:5,  lb:0,cat:"Drones",   nul:"zero",   wk:1},
+  {k:"ech", l:"E-Challan WA%",                      w:5,  lb:0,cat:"eChallan", nul:"zero",   wk:1},
+  {k:"esr", l:"APOLIS Entry",                       w:10, lb:0,cat:"APOLIS",   nul:"neutral",wk:0},
+];
+const RD={
+  pme:{ASR:33.33,Anakapalli:96.15,Ananthapuram:47.83,Annamayya:33.33,Bapatla:62.5,Chittoor:14.29,Konaseema:57.14,"East Godavari":52.94,Eluru:70.59,"GRP Guntakal":36.36,"GRP Vijayawada":37.5,Guntur:28.57,Kakinada:73.68,Krishna:8.33,Kurnool:52.17,Markapuram:22.22,Nandyal:33.33,NTR:87.5,Palnadu:11.76,"PVP Manyam":42.86,Polavaram:62.5,Prakasam:38.46,"SPSR Nellore":69.57,"Sri Sathya Sai":66.67,Srikakulam:75.0,Tirupathi:63.64,Visakhapatnam:85.71,Vizianagaram:70.0,"West Godavari":30.0,"YSR Kadapa":57.89},
+  mlc:{ASR:33.33,Anakapalli:12.5,Ananthapuram:6.67,Annamayya:0,Bapatla:33.33,Chittoor:50.0,Konaseema:0,"East Godavari":0,Eluru:0,"GRP Guntakal":0,"GRP Vijayawada":0,Guntur:0,Kakinada:0,Krishna:0,Kurnool:20.0,Markapuram:0,Nandyal:18.18,NTR:68.75,Palnadu:0,"PVP Manyam":50.0,Polavaram:0,Prakasam:0,"SPSR Nellore":0,"Sri Sathya Sai":0,Srikakulam:14.29,Tirupathi:7.69,Visakhapatnam:0,Vizianagaram:71.43,"West Godavari":0,"YSR Kadapa":0},
+  ng:{ASR:352,Anakapalli:142,Ananthapuram:30,Annamayya:740,Bapatla:1026,Chittoor:115,Konaseema:201,"East Godavari":664,Eluru:719,"GRP Guntakal":108,"GRP Vijayawada":57,Guntur:242,Kakinada:300,Krishna:604,Kurnool:171,Markapuram:0,Nandyal:178,NTR:1081,Palnadu:272,"PVP Manyam":72,Polavaram:0,Prakasam:842,"SPSR Nellore":180,"Sri Sathya Sai":2046,Srikakulam:259,Tirupathi:487,Visakhapatnam:51,Vizianagaram:1864,"West Godavari":800,"YSR Kadapa":115},
+  dgsp:{ASR:100,Anakapalli:100,Ananthapuram:100,Annamayya:100,Bapatla:98.67,Chittoor:100,Konaseema:100,"East Godavari":100,Eluru:100,"GRP Guntakal":100,"GRP Vijayawada":100,Guntur:99,Kakinada:100,Krishna:100,Kurnool:100,Markapuram:100,Nandyal:98.33,NTR:100,Palnadu:100,"PVP Manyam":96.67,Polavaram:100,Prakasam:100,"SPSR Nellore":100,"Sri Sathya Sai":100,Srikakulam:100,Tirupathi:98.67,Visakhapatnam:100,Vizianagaram:100,"West Godavari":100,"YSR Kadapa":99.33},
+  ctd:{ASR:8.78,Anakapalli:8.38,Ananthapuram:11.0,Annamayya:9.49,Bapatla:10.88,Chittoor:11.8,Konaseema:8.94,"East Godavari":9.68,Eluru:13.21,"GRP Guntakal":6.26,"GRP Vijayawada":5.07,Guntur:7.7,Kakinada:9.63,Krishna:12.53,Kurnool:10.24,Markapuram:33.22,Nandyal:10.24,NTR:9.94,Palnadu:10.3,"PVP Manyam":8.09,Polavaram:24.91,Prakasam:11.42,"SPSR Nellore":8.94,"Sri Sathya Sai":10.57,Srikakulam:9.14,Tirupathi:8.97,Visakhapatnam:8.52,Vizianagaram:8.29,"West Godavari":13.13,"YSR Kadapa":9.0},
+  cwk:{ASR:3.04,Anakapalli:0.86,Ananthapuram:1.05,Annamayya:2.38,Bapatla:4.98,Chittoor:3.2,Konaseema:2.26,"East Godavari":3.36,Eluru:4.13,"GRP Guntakal":0.19,"GRP Vijayawada":2.12,Guntur:0.4,Kakinada:1.72,Krishna:3.38,Kurnool:1.25,Markapuram:2.02,Nandyal:0.53,NTR:3.6,Palnadu:1.32,"PVP Manyam":1.0,Polavaram:4.64,Prakasam:1.27,"SPSR Nellore":1.58,"Sri Sathya Sai":2.83,Srikakulam:2.52,Tirupathi:1.62,Visakhapatnam:0.78,Vizianagaram:1.79,"West Godavari":2.25,"YSR Kadapa":0.85},
+  cpp:{ASR:49,Anakapalli:21,Ananthapuram:17,Annamayya:2,Bapatla:7,Chittoor:9,Konaseema:16,"East Godavari":21,Eluru:15,"GRP Guntakal":1,"GRP Vijayawada":1,Guntur:20,Kakinada:16,Krishna:18,Kurnool:23,Markapuram:8,Nandyal:14,NTR:8,Palnadu:3,"PVP Manyam":11,Polavaram:34,Prakasam:10,"SPSR Nellore":3,"Sri Sathya Sai":9,Srikakulam:21,Tirupathi:9,Visakhapatnam:20,Vizianagaram:9,"West Godavari":17,"YSR Kadapa":2},
+  crim:{ASR:949,Anakapalli:40,Ananthapuram:409,Annamayya:756,Bapatla:878,Chittoor:423,Konaseema:1691,"East Godavari":3920,Eluru:4042,"GRP Guntakal":411,"GRP Vijayawada":35,Guntur:23,Kakinada:522,Krishna:118,Kurnool:1,Markapuram:0,Nandyal:13,NTR:634,Palnadu:41,"PVP Manyam":4,Polavaram:0,Prakasam:77,"SPSR Nellore":3723,"Sri Sathya Sai":2144,Srikakulam:206,Tirupathi:251,Visakhapatnam:314,Vizianagaram:236,"West Godavari":30,"YSR Kadapa":156},
+  esak:{ASR:52.6,Anakapalli:28.3,Ananthapuram:55.0,Annamayya:40.4,Bapatla:65.9,Chittoor:46.9,Konaseema:33.2,"East Godavari":48.7,Eluru:33.4,"GRP Guntakal":58.6,"GRP Vijayawada":80.4,Guntur:19.9,Kakinada:31.8,Krishna:46.3,Kurnool:49.7,Markapuram:25.5,Nandyal:37.5,NTR:80.7,Palnadu:37.5,"PVP Manyam":45.7,Polavaram:46.2,Prakasam:35.0,"SPSR Nellore":37.3,"Sri Sathya Sai":90.1,Srikakulam:31.3,Tirupathi:20.9,Visakhapatnam:22.0,Vizianagaram:35.9,"West Godavari":42.5,"YSR Kadapa":54.5},
+  ceir:{ASR:31.46,Anakapalli:35.54,Ananthapuram:49.46,Annamayya:55.51,Bapatla:57.27,Chittoor:43.18,Konaseema:50.36,"East Godavari":46.33,Eluru:61.54,"GRP Guntakal":38.13,"GRP Vijayawada":30.56,Guntur:48.77,Kakinada:39.47,Krishna:42.2,Kurnool:33.71,Markapuram:52.64,Nandyal:47.18,NTR:63.2,Palnadu:69.72,"PVP Manyam":37.69,Polavaram:21.46,Prakasam:50.48,"SPSR Nellore":40.45,"Sri Sathya Sai":14.69,Srikakulam:47.32,Tirupathi:46.34,Visakhapatnam:58.75,Vizianagaram:21.56,"West Godavari":44.01,"YSR Kadapa":50.29},
+  d100t:{ASR:14.47,Anakapalli:16.38,Ananthapuram:8.2,Annamayya:46.79,Bapatla:3.73,Chittoor:23.89,Konaseema:5.48,"East Godavari":7.69,Eluru:18.6,"GRP Guntakal":null,"GRP Vijayawada":null,Guntur:11.03,Kakinada:12.2,Krishna:24.27,Kurnool:35.94,Markapuram:2.01,Nandyal:19.08,NTR:0,Palnadu:0.75,"PVP Manyam":0,Polavaram:14.47,Prakasam:2.01,"SPSR Nellore":7.69,"Sri Sathya Sai":5.83,Srikakulam:5.38,Tirupathi:13.56,Visakhapatnam:28.19,Vizianagaram:1.77,"West Godavari":12.5,"YSR Kadapa":23.78},
+  d100r:{ASR:100,Anakapalli:12.78,Ananthapuram:13.43,Annamayya:15.4,Bapatla:6.67,Chittoor:7.75,Konaseema:14.22,"East Godavari":10.8,Eluru:8.57,"GRP Guntakal":null,"GRP Vijayawada":null,Guntur:9.22,Kakinada:12.27,Krishna:10.25,Kurnool:20.87,Markapuram:9.0,Nandyal:14.65,NTR:8.48,Palnadu:14.07,"PVP Manyam":37.28,Polavaram:100,Prakasam:9.0,"SPSR Nellore":10.68,"Sri Sathya Sai":12.18,Srikakulam:10.12,Tirupathi:8.9,Visakhapatnam:12.68,Vizianagaram:9.22,"West Godavari":7.85,"YSR Kadapa":17.48},
+  drn:{ASR:93,Anakapalli:89,Ananthapuram:144,Annamayya:102,Bapatla:93.3,Chittoor:136.55,Konaseema:88,"East Godavari":264,Eluru:66,"GRP Guntakal":0,"GRP Vijayawada":0,Guntur:52,Kakinada:402,Krishna:91,Kurnool:17,Markapuram:130,Nandyal:90,NTR:452,Palnadu:88,"PVP Manyam":56,Polavaram:93,Prakasam:130,"SPSR Nellore":172,"Sri Sathya Sai":121.3,Srikakulam:64.4,Tirupathi:172,Visakhapatnam:396,Vizianagaram:60.3,"West Godavari":104,"YSR Kadapa":62},
+  ech:{ASR:5,Anakapalli:4,Ananthapuram:9,Annamayya:3,Bapatla:17,Chittoor:13,Konaseema:0,"East Godavari":0,Eluru:0,"GRP Guntakal":0,"GRP Vijayawada":0,Guntur:10,Kakinada:3,Krishna:0,Kurnool:0,Markapuram:11,Nandyal:3,NTR:12,Palnadu:0,"PVP Manyam":6,Polavaram:5,Prakasam:11,"SPSR Nellore":3,"Sri Sathya Sai":16,Srikakulam:3,Tirupathi:1,Visakhapatnam:5,Vizianagaram:9,"West Godavari":0,"YSR Kadapa":0},
+  esr:{ASR:98.58,Anakapalli:99.25,Ananthapuram:99.51,Annamayya:100,Bapatla:99.84,Chittoor:99.72,Konaseema:99.55,"East Godavari":94.63,Eluru:99.57,"GRP Guntakal":98.21,"GRP Vijayawada":99.57,Guntur:95.65,Kakinada:99.19,Krishna:99.88,Kurnool:99.2,Markapuram:100,Nandyal:99.86,NTR:99.82,Palnadu:99.87,"PVP Manyam":99.47,Polavaram:98.58,Prakasam:100,"SPSR Nellore":99.38,"Sri Sathya Sai":99.39,Srikakulam:99.07,Tirupathi:100,Visakhapatnam:99.34,Vizianagaram:99.21,"West Godavari":99.4,"YSR Kadapa":97.15},
+};
+const PREV_D=["ASR","Anakapalli","Ananthapuram","Annamayya","Bapatla","Chittoor","Konaseema","East Godavari","Eluru","Guntur","Kakinada","Krishna","Kurnool","Markapuram","Nandyal","NTR","Palnadu","PVP Manyam","Polavaram","Prakasam","SPSR Nellore","Sri Sathya Sai","Srikakulam","Tirupathi","Visakhapatnam","Vizianagaram","West Godavari","YSR Kadapa"];
+const PREV_RD={
+  pme:{ASR:61.29,Anakapalli:69.71,Ananthapuram:59.6,Annamayya:20.29,Bapatla:74.79,Chittoor:19.17,Konaseema:61.44,"East Godavari":52.96,Eluru:66.2,Guntur:46.74,Kakinada:73.92,Krishna:55.81,Kurnool:64.53,Markapuram:23.93,Nandyal:57.14,NTR:69.03,Palnadu:18.93,"PVP Manyam":27.87,Polavaram:80.3,Prakasam:31.47,"SPSR Nellore":64.94,"Sri Sathya Sai":63.68,Srikakulam:53.85,Tirupathi:41.79,Visakhapatnam:75.18,Vizianagaram:59.88,"West Godavari":46.98,"YSR Kadapa":58.87},
+  mlc:{ASR:15.79,Anakapalli:11.48,Ananthapuram:29.36,Annamayya:8.25,Bapatla:53.73,Chittoor:29.55,Konaseema:2.44,"East Godavari":3.43,Eluru:10.08,Guntur:6.4,Kakinada:15.13,Krishna:4.07,Kurnool:60.2,Markapuram:15.79,Nandyal:33.33,NTR:13.47,Palnadu:3.16,"PVP Manyam":27.27,Polavaram:14.29,Prakasam:14.95,"SPSR Nellore":6.37,"Sri Sathya Sai":35.94,Srikakulam:24.31,Tirupathi:5.94,Visakhapatnam:1.54,Vizianagaram:6.86,"West Godavari":25.0,"YSR Kadapa":2.08},
+  ng:{ASR:690,Anakapalli:126,Ananthapuram:0,Annamayya:519,Bapatla:1139,Chittoor:366,Konaseema:161,"East Godavari":258,Eluru:0,Guntur:196,Kakinada:723,Krishna:570,Kurnool:98,Markapuram:0,Nandyal:76,NTR:575,Palnadu:122,"PVP Manyam":0,Polavaram:0,Prakasam:226,"SPSR Nellore":5,"Sri Sathya Sai":0,Srikakulam:233,Tirupathi:271,Visakhapatnam:400,Vizianagaram:549,"West Godavari":723,"YSR Kadapa":192},
+  dgsp:{ASR:100,Anakapalli:98,Ananthapuram:100,Annamayya:100,Bapatla:98.67,Chittoor:100,Konaseema:100,"East Godavari":100,Eluru:100,Guntur:98,Kakinada:100,Krishna:100,Kurnool:100,Markapuram:100,Nandyal:99.33,NTR:100,Palnadu:99,"PVP Manyam":98.33,Polavaram:100,Prakasam:100,"SPSR Nellore":100,"Sri Sathya Sai":100,Srikakulam:100,Tirupathi:98.67,Visakhapatnam:100,Vizianagaram:100,"West Godavari":100,"YSR Kadapa":99.33},
+  ctd:{ASR:8.78,Anakapalli:8.37,Ananthapuram:11.0,Annamayya:9.48,Bapatla:10.86,Chittoor:11.75,Konaseema:8.93,"East Godavari":9.68,Eluru:13.2,Guntur:7.69,Kakinada:9.62,Krishna:12.52,Kurnool:10.2,Markapuram:15,Nandyal:10.23,NTR:9.93,Palnadu:10.29,"PVP Manyam":8.07,Polavaram:15,Prakasam:11.41,"SPSR Nellore":8.93,"Sri Sathya Sai":10.56,Srikakulam:9.13,Tirupathi:8.96,Visakhapatnam:8.5,Vizianagaram:8.28,"West Godavari":13.12,"YSR Kadapa":9.0},
+  cwk:{ASR:4.5,Anakapalli:2.36,Ananthapuram:1.24,Annamayya:1.56,Bapatla:4.01,Chittoor:2.71,Konaseema:1.66,"East Godavari":3.06,Eluru:4.09,Guntur:0.71,Kakinada:1.57,Krishna:3.21,Kurnool:0.73,Markapuram:2.98,Nandyal:0.68,NTR:3.55,Palnadu:0.69,"PVP Manyam":2.13,Polavaram:5.45,Prakasam:1.96,"SPSR Nellore":1.59,"Sri Sathya Sai":1.96,Srikakulam:1.59,Tirupathi:1.48,Visakhapatnam:0.84,Vizianagaram:2.32,"West Godavari":2.59,"YSR Kadapa":0.96},
+  cpp:{ASR:25,Anakapalli:37,Ananthapuram:17,Annamayya:29,Bapatla:20,Chittoor:30,Konaseema:46,"East Godavari":29,Eluru:30,Guntur:25,Kakinada:22,Krishna:26,Kurnool:27,Markapuram:0,Nandyal:33,NTR:11,Palnadu:3,"PVP Manyam":23,Polavaram:0,Prakasam:20,"SPSR Nellore":4,"Sri Sathya Sai":30,Srikakulam:22,Tirupathi:4,Visakhapatnam:25,Vizianagaram:19,"West Godavari":38,"YSR Kadapa":1},
+  crim:{ASR:244,Anakapalli:204,Ananthapuram:27,Annamayya:476,Bapatla:785,Chittoor:243,Konaseema:2421,"East Godavari":3138,Eluru:1306,Guntur:3,Kakinada:697,Krishna:77,Kurnool:1,Markapuram:0,Nandyal:6,NTR:388,Palnadu:31,"PVP Manyam":8,Polavaram:0,Prakasam:74,"SPSR Nellore":3717,"Sri Sathya Sai":564,Srikakulam:125,Tirupathi:208,Visakhapatnam:141,Vizianagaram:52,"West Godavari":793,"YSR Kadapa":471},
+  esak:{ASR:52.3,Anakapalli:28.0,Ananthapuram:53.0,Annamayya:40.5,Bapatla:64.9,Chittoor:35.0,Konaseema:32.4,"East Godavari":44.2,Eluru:27.4,Guntur:16.2,Kakinada:30.9,Krishna:46.0,Kurnool:25.0,Markapuram:24.7,Nandyal:13.1,NTR:80.2,Palnadu:36.6,"PVP Manyam":45.0,Polavaram:42.1,Prakasam:33.3,"SPSR Nellore":33.1,"Sri Sathya Sai":89.7,Srikakulam:29.0,Tirupathi:19.5,Visakhapatnam:15.3,Vizianagaram:31.1,"West Godavari":42.2,"YSR Kadapa":51.6},
+  ceir:{ASR:29,Anakapalli:35,Ananthapuram:50,Annamayya:56,Bapatla:55,Chittoor:43,Konaseema:50,"East Godavari":46,Eluru:61,Guntur:49,Kakinada:40,Krishna:42,Kurnool:32,Markapuram:53,Nandyal:45,NTR:62,Palnadu:70,"PVP Manyam":37,Polavaram:22,Prakasam:50,"SPSR Nellore":38,"Sri Sathya Sai":14,Srikakulam:48,Tirupathi:46,Visakhapatnam:58,Vizianagaram:20,"West Godavari":44,"YSR Kadapa":50},
+  d100t:{ASR:19.74,Anakapalli:20.69,Ananthapuram:14.75,Annamayya:40.37,Bapatla:0,Chittoor:23.01,Konaseema:9.59,"East Godavari":35.9,Eluru:20.93,Guntur:5.52,Kakinada:24.39,Krishna:32.04,Kurnool:40.62,Markapuram:0,Nandyal:23.03,NTR:0,Palnadu:1.49,"PVP Manyam":2.86,Polavaram:19.74,Prakasam:0,"SPSR Nellore":16.03,"Sri Sathya Sai":8.26,Srikakulam:3.08,Tirupathi:27.12,Visakhapatnam:34.9,Vizianagaram:0.88,"West Godavari":20.45,"YSR Kadapa":16.76},
+  d100r:{ASR:155,Anakapalli:11.8,Ananthapuram:14.33,Annamayya:21.42,Bapatla:6.43,Chittoor:8.43,Konaseema:13.13,"East Godavari":10.58,Eluru:8.8,Guntur:9.53,Kakinada:15.43,Krishna:9.72,Kurnool:19.33,Markapuram:9.15,Nandyal:13.9,NTR:8.5,Palnadu:13.8,"PVP Manyam":13.28,Polavaram:155,Prakasam:9.15,"SPSR Nellore":11.25,"Sri Sathya Sai":11.63,Srikakulam:10.17,Tirupathi:7.68,Visakhapatnam:10.05,Vizianagaram:10.65,"West Godavari":7.42,"YSR Kadapa":13.87},
+  drn:{ASR:96,Anakapalli:126,Ananthapuram:67,Annamayya:101,Bapatla:75.3,Chittoor:128.45,Konaseema:81,"East Godavari":286,Eluru:69,Guntur:67,Kakinada:470,Krishna:95,Kurnool:17.15,Markapuram:131,Nandyal:98,NTR:438,Palnadu:69,"PVP Manyam":53,Polavaram:96,Prakasam:131,"SPSR Nellore":171,"Sri Sathya Sai":91,Srikakulam:56.55,Tirupathi:175,Visakhapatnam:436,Vizianagaram:58,"West Godavari":96,"YSR Kadapa":65},
+  ech:{ASR:0,Anakapalli:2,Ananthapuram:16,Annamayya:3,Bapatla:23,Chittoor:21,Konaseema:0,"East Godavari":1,Eluru:0,Guntur:12,Kakinada:3,Krishna:0,Kurnool:0,Markapuram:18,Nandyal:6,NTR:14,Palnadu:0,"PVP Manyam":9,Polavaram:0,Prakasam:18,"SPSR Nellore":5,"Sri Sathya Sai":27,Srikakulam:1,Tirupathi:1,Visakhapatnam:3,Vizianagaram:1,"West Godavari":2,"YSR Kadapa":0},
+  esr:{ASR:98.58,Anakapalli:99.25,Ananthapuram:99.51,Annamayya:100,Bapatla:99.84,Chittoor:99.72,Konaseema:99.55,"East Godavari":93.83,Eluru:99.57,Guntur:94.65,Kakinada:99.19,Krishna:99.82,Kurnool:99.2,Markapuram:100,Nandyal:99.86,NTR:99.79,Palnadu:99.87,"PVP Manyam":99.47,Polavaram:98.58,Prakasam:100,"SPSR Nellore":99.38,"Sri Sathya Sai":99.39,Srikakulam:99.07,Tirupathi:100,Visakhapatnam:99.34,Vizianagaram:99.21,"West Godavari":99.4,"YSR Kadapa":97.06},
+};
+
+// ─── SCORING ENGINE ───────────────────────────────────────────────────────────
+function computeScores(rd, districts, params) {
+  const totalW = params.reduce((s,p)=>s+p.w,0);
+  const ns = {};
+  districts.forEach(d=>{ ns[d]={}; });
+  params.forEach(p=>{
+    let vals = districts.map(d=>{ let v=rd[p.k]?rd[p.k][d]:null; if(v==null)return null; if(p.cap)v=Math.min(v,p.cap); if(p.sq)v=Math.sqrt(v); return v; });
+    const valid=vals.filter(v=>v!=null);
+    if(!valid.length){ districts.forEach(d=>{ ns[d][p.k]=50; }); return; }
+    const mn=Math.min(...valid), mx=Math.max(...valid);
+    districts.forEach((d,i)=>{ let v=vals[i],sc; if(v==null){sc=p.nul==="zero"?0:50;}else{sc=mx===mn?50:(v-mn)/(mx-mn)*100; if(p.lb)sc=100-sc;} ns[d][p.k]=Math.round(sc*10)/10; });
+  });
+  const comp={};
+  districts.forEach(d=>{ let s=0; params.forEach(p=>s+=(ns[d][p.k]*p.w)/totalW); comp[d]=Math.round(s*10)/10; });
+  return {ns,comp};
+}
+
+const {ns:NS, comp:COMP} = computeScores(RD,D,PARAMS);
+const {comp:PCOMP} = computeScores(PREV_RD,PREV_D,PARAMS);
+const RANKED = [...D].sort((a,b)=>COMP[b]-COMP[a]).map((d,i)=>({d,rank:i+1,score:COMP[d]}));
+const PRANKED = [...PREV_D].sort((a,b)=>PCOMP[b]-PCOMP[a]).map((d,i)=>({d,rank:i+1}));
+const PRANKMAP = Object.fromEntries(PRANKED.map(r=>[r.d,r.rank]));
+const WK_PARAMS = PARAMS.filter(p=>p.wk);
+const {comp:WCOMP} = computeScores(RD,D,WK_PARAMS);
+const WRANKED = [...D].sort((a,b)=>WCOMP[b]-WCOMP[a]).map((d,i)=>({d,rank:i+1,score:WCOMP[d]}));
+const IMPR = D.filter(d=>PCOMP[d]!=null).map(d=>({d,delta:COMP[d]-PCOMP[d],curr:COMP[d],prev:PCOMP[d]})).sort((a,b)=>b.delta-a.delta).map((r,i)=>({...r,rank:i+1}));
+const CATS=[...new Set(PARAMS.map(p=>p.cat))];
+
+function catScore(d,cat){ const ps=PARAMS.filter(p=>p.cat===cat),tw=ps.reduce((s,p)=>s+p.w,0); return Math.round(ps.reduce((s,p)=>s+NS[d][p.k]*p.w,0)/tw); }
+function grade(s){ if(s>=75)return{g:"A",c:"#059669",bg:"#d1fae5",bd:"#10b981"}; if(s>=62)return{g:"B",c:"#0284c7",bg:"#e0f2fe",bd:"#38bdf8"}; if(s>=49)return{g:"C",c:"#d97706",bg:"#fef3c7",bd:"#fbbf24"}; if(s>=36)return{g:"D",c:"#ea580c",bg:"#ffedd5",bd:"#fb923c"}; return{g:"E",c:"#dc2626",bg:"#fee2e2",bd:"#f87171"}; }
+function cellBg(s){ return `hsla(${Math.round(s*1.2)},65%,88%,0.9)`; }
+function mvBadge(d,cr){ const pr=PRANKMAP[d]; if(pr==null)return'<span class="new-badge">NEW</span>'; const mv=pr-cr; if(!mv)return'<span style="color:#9ca3af">—</span>'; return mv>0?`<span class="up">▲${mv}</span>`:`<span class="dn">▼${Math.abs(mv)}</span>`; }
+function deltaBadge(d){ const p=PCOMP[d]; if(p==null)return''; const dv=COMP[d]-p; if(Math.abs(dv)<0.05)return'<span style="color:#9ca3af;font-size:10px">±0</span>'; return dv>0?`<span class="up" style="font-size:10px">↑${dv.toFixed(1)}</span>`:`<span class="dn" style="font-size:10px">↓${Math.abs(dv).toFixed(1)}</span>`; }
+function medal(r){ return r===1?"🥇":r===2?"🥈":r===3?"🥉":`#${r}`; }
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state={tab:"rankings",sel:"NTR",heatSort:"rank",trendView:"weekly"};
+function setState(upd){ Object.assign(state,upd); render(); }
+
+// ─── SVG BAR CHART ────────────────────────────────────────────────────────────
+function barChartSVG(data, width, height, margin, colorFn, tooltipKey) {
+  // data = [{label, value, color?}]
+  const W=width, H=height, ML=margin.left||40, MR=margin.right||10, MT=margin.top||10, MB=margin.bottom||70;
+  const pw=W-ML-MR, ph=H-MT-MB;
+  const max=Math.max(...data.map(d=>d.value),1);
+  const bw=Math.max(pw/data.length-3,4);
+  let bars='', labels='', ylines='';
+  // Y gridlines
+  [0,25,50,75,100].forEach(v=>{ const y=ph-(v/max)*ph+MT; ylines+=`<line x1="${ML}" y1="${y}" x2="${W-MR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`; ylines+=`<text x="${ML-4}" y="${y+4}" text-anchor="end" font-size="9" fill="#6b7280">${v}</text>`; });
+  data.forEach((d,i)=>{
+    const x=ML+i*(pw/data.length)+(pw/data.length-bw)/2;
+    const bh=Math.max((d.value/max)*ph,1);
+    const y=MT+ph-bh;
+    const col=d.color||grade(d.value).bd;
+    bars+=`<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${col}" rx="3" class="bar" data-tip="${d.label}: ${d.value.toFixed(1)}"/>`;
+    // rotated label
+    const lx=x+bw/2, ly=H-MB+5;
+    labels+=`<text transform="rotate(-50,${lx},${ly})" x="${lx}" y="${ly}" text-anchor="end" font-size="9" fill="#374151">${d.label.length>12?d.label.substring(0,11)+'…':d.label}</text>`;
+  });
+  return `<div style="overflow-x:auto"><svg width="${W}" height="${H}" style="display:block;min-width:${W}px">
+    ${ylines}${bars}${labels}
+    <text x="${ML}" y="${MT-2}" font-size="10" fill="#6b7280"></text>
+  </svg></div>`;
+}
+
+function horizBarSVG(data) {
+  const W=340,LW=90,RW=W-LW-10,H=data.length*20+10;
+  let rows='';
+  data.forEach((d,i)=>{
+    const y=i*20+5, bw=Math.max((d.value/100)*RW,1), col=grade(d.value).bd;
+    rows+=`<text x="${LW-4}" y="${y+13}" text-anchor="end" font-size="9" fill="#374151">${d.label}</text>`;
+    rows+=`<rect x="${LW}" y="${y+2}" width="${bw}" height="13" fill="${col}" rx="2"/>`;
+    rows+=`<text x="${LW+bw+3}" y="${y+13}" font-size="9" fill="#374151">${d.value.toFixed(0)}</text>`;
+  });
+  return `<svg width="${W}" height="${H}" style="display:block;width:100%">${rows}</svg>`;
+}
+
+function radarSVG(d) {
+  const cx=150,cy=150,r=110,cats=CATS;
+  const n=cats.length;
+  let spokes='',poly='',labels='';
+  cats.forEach((cat,i)=>{
+    const angle=(i/n)*2*Math.PI-Math.PI/2;
+    const x=cx+r*Math.cos(angle),y=cy+r*Math.sin(angle);
+    spokes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+    const sc=catScore(d,cat)/100;
+    const lx=cx+(r+18)*Math.cos(angle),ly=cy+(r+18)*Math.sin(angle);
+    labels+=`<text x="${lx}" y="${ly+4}" text-anchor="middle" font-size="9" fill="#374151">${cat}</text>`;
+  });
+  [25,50,75,100].forEach(pct=>{
+    const pts=cats.map((_,i)=>{ const a=(i/n)*2*Math.PI-Math.PI/2; return `${cx+(r*pct/100)*Math.cos(a)},${cy+(r*pct/100)*Math.sin(a)}`; }).join(' ');
+    spokes+=`<polygon points="${pts}" fill="none" stroke="#e5e7eb" stroke-width="1"/>`;
+  });
+  const {bd}=grade(catScore(d,CATS[0]));
+  const pts=cats.map((cat,i)=>{ const a=(i/n)*2*Math.PI-Math.PI/2,sc=catScore(d,cat)/100; return `${cx+r*sc*Math.cos(a)},${cy+r*sc*Math.sin(a)}`; }).join(' ');
+  poly=`<polygon points="${pts}" fill="${bd}44" stroke="${bd}" stroke-width="2"/>`;
+  return `<svg width="300" height="300" style="display:block;margin:auto">${spokes}${poly}${labels}</svg>`;
+}
+
+// ─── RENDER FUNCTIONS ─────────────────────────────────────────────────────────
+function renderRankings() {
+  const top5=RANKED.slice(0,5), bot5=[...RANKED].slice(-5).reverse();
+  function card5(rows,title,tc){
+    return `<div class="card"><div style="color:${tc};font-weight:700;margin-bottom:10px;font-size:14px">${title}</div>`+
+    rows.map(({d,rank,score})=>{ const {g,c,bg}=grade(score); return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;padding:6px 10px;background:#f9fafb;border-radius:8px">
+      <span style="font-size:15px;min-width:24px">${medal(rank)}</span>
+      <span style="flex:1;font-weight:600">${d}</span>
+      ${mvBadge(d,rank)} ${deltaBadge(d)}
+      <span class="badge grade-${g}">${g} ${score.toFixed(1)}</span>
+    </div>`; }).join('')+'</div>';
+  }
+  // bar chart data
+  const barData=RANKED.map(({d,score})=>({label:d,value:score,color:grade(score).bd}));
+  const chartW=Math.max(900,RANKED.length*30);
+  let tblRows=RANKED.map(({d,rank,score})=>{ const {g,c,bg}=grade(score); const rbg=rank<=3?"#fbbf24":rank<=10?"#d1d5db":"#e5e7eb"; const rc=rank<=3?"#78350f":"#374151";
+    return `<tr class="clickable" onclick="goDetail('${d}')" style="border-bottom:1px solid #f0f0f0;background:${rank%2===0?"#f7f9fc":"#fff"}">
+      <td style="text-align:left"><span class="rank-badge" style="background:${rbg};color:${rc}">${medal(rank)}</span></td>
+      <td>${mvBadge(d,rank)}</td>
+      <td style="text-align:left;font-weight:600">${d}</td>
+      <td style="font-weight:800;font-size:15px;color:${c}">${score.toFixed(1)}</td>
+      <td>${deltaBadge(d)}</td>
+      <td><span class="badge grade-${g}">${g}</span></td>
+      ${CATS.map(cat=>{ const cs=catScore(d,cat); return `<td style="background:${cellBg(cs)};font-weight:600">${cs}</td>`; }).join('')}
+    </tr>`;
+  }).join('');
+  return `<div class="grid2">${card5(top5,"🏆 Top 5 Performers","#059669")}${card5(bot5,"⚠️ Bottom 5 — Need Attention","#dc2626")}</div>
+  <div class="card"><div class="card-title">Composite Score — All 30 Units</div>${barChartSVG(barData,chartW,320,{left:36,right:10,top:10,bottom:75})}</div>
+  <div class="card"><div class="card-title">Full Rankings <span style="color:#6b7280;font-weight:400;font-size:12px">(click row → District Detail)</span></div>
+  <div class="ovx"><table><thead><tr class="tbl-hdr">
+    <th style="text-align:left;min-width:44px">Rank</th><th style="min-width:36px">Chg</th><th style="text-align:left;min-width:120px">District</th>
+    <th style="min-width:56px">Score</th><th style="min-width:40px">Δ</th><th style="min-width:44px">Grade</th>
+    ${CATS.map(c=>`<th style="min-width:54px;font-size:10px">${c}</th>`).join('')}
+  </tr></thead><tbody>${tblRows}</tbody></table></div>
+  <div class="legend">
+    <span class="grade-A">A: ≥75</span><span class="grade-B">B: 62–74</span><span class="grade-C">C: 49–61</span><span class="grade-D">D: 36–48</span><span class="grade-E">E: &lt;36</span>
+    <span style="font-size:11px;color:#6b7280;margin-left:8px">▲▼ = rank movement &nbsp;·&nbsp; ↑↓ = score change vs prev week</span>
+  </div></div>`;
+}
+
+function renderHeatmap() {
+  const rows = state.heatSort==="rank"?RANKED:[...RANKED].sort((a,b)=>a.d.localeCompare(b.d));
+  const tblRows=rows.map(({d,rank,score})=>{ const {g,c,bg}=grade(score); const delta=PCOMP[d]!=null?COMP[d]-PCOMP[d]:null;
+    const dCell=delta==null?'<span class="na">NEW</span>':delta>0.05?`<span class="up">↑${delta.toFixed(1)}</span>`:delta<-0.05?`<span class="dn">↓${Math.abs(delta).toFixed(1)}</span>`:'<span style="color:#9ca3af">—</span>';
+    return `<tr class="clickable" onclick="goDetail('${d}')" style="border-bottom:1px solid #e5e7eb">
+      <td class="heat-sticky-col" style="font-weight:600;padding:5px 10px"><span style="color:#9ca3af;font-size:10px">#${rank}</span> ${d}</td>
+      <td style="text-align:center">${mvBadge(d,rank)}</td>
+      <td style="text-align:center;background:${bg};font-weight:800;color:${c}">${score.toFixed(0)}<sub style="font-size:9px">${g}</sub></td>
+      <td style="text-align:center;font-size:10px">${dCell}</td>
+      ${PARAMS.map(p=>{ const ns=NS[d][p.k]; const isNull=RD[p.k][d]==null||RD[p.k][d]===undefined; return `<td style="text-align:center;background:${isNull?"#f3f4f6":cellBg(ns)};color:${ns<25?"#7f1d1d":ns>75?"#14532d":"#374151"};font-weight:${ns>75||ns<25?700:400}">${isNull?'<span class="na">—</span>':ns.toFixed(0)}</td>`; }).join('')}
+    </tr>`;
+  }).join('');
+  return `<div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+      <div class="card-title" style="margin:0">Parameter Heatmap — Normalized Scores (0–100)</div>
+      <div class="sort-btns">
+        <span style="font-size:12px;color:#6b7280">Sort:</span>
+        <button class="sort-btn ${state.heatSort==='rank'?'active':''}" onclick="setState({heatSort:'rank'})">Rank</button>
+        <button class="sort-btn ${state.heatSort==='alpha'?'active':''}" onclick="setState({heatSort:'alpha'})">Name</button>
+      </div>
+    </div>
+    <div class="ovxy"><table style="font-size:11px">
+      <thead>
+        <tr class="tbl-hdr" style="position:sticky;top:0;z-index:10">
+          <th class="heat-hdr-sticky" style="text-align:left;min-width:140px;background:#0f2a52">District</th>
+          <th style="min-width:36px">Chg</th><th style="min-width:50px;font-weight:800">SCORE</th><th style="min-width:40px">Δ</th>
+          ${PARAMS.map(p=>`<th style="min-width:44px;max-width:50px"><div style="writing-mode:vertical-rl;transform:rotate(180deg);height:70px;font-size:10px;font-weight:600" title="${p.l}">${p.l.substring(0,13)}</div></th>`).join('')}
+        </tr>
+        <tr style="background:#1e3a5f;color:rgba(255,255,255,.6);font-size:10px;position:sticky;top:0;z-index:10">
+          <th class="heat-hdr-sticky" style="text-align:left;padding:4px 10px;background:#1e3a5f">Wt →</th>
+          <th></th><th>100%</th><th>prev</th>
+          ${PARAMS.map(p=>`<th>${p.w}%</th>`).join('')}
+        </tr>
+      </thead><tbody>${tblRows}</tbody>
+    </table></div>
+    <div style="margin-top:10px;font-size:12px;color:#6b7280">🟢 High &nbsp;|&nbsp; 🔴 Low &nbsp;|&nbsp; — = N/A &nbsp;|&nbsp; ▲▼ rank vs prev week &nbsp;|&nbsp; Click → District Detail</div>
+  </div>`;
+}
+
+function renderTrends() {
+  const tv=state.trendView;
+  const btns=`<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="wk-btn ${tv==='weekly'?'active':''}" onclick="setState({trendView:'weekly'})">📅 Weekly Performance Rank</button>
+    <button class="wk-btn ${tv==='improved'?'active':''}" onclick="setState({trendView:'improved'})">🚀 Most Improved This Week</button>
+  </div>`;
+
+  if(tv==="weekly") {
+    const barData=WRANKED.map(({d,score})=>({label:d,value:score,color:grade(score).bd}));
+    const chartW=Math.max(900,WRANKED.length*30);
+    const tblRows=WRANKED.map(({d,rank:wR,score:wS})=>{ const oR=RANKED.find(r=>r.d===d)?.rank||"-"; const oS=COMP[d]; const diff=typeof oR==="number"?oR-wR:0;
+      return `<tr class="clickable" onclick="goDetail('${d}')" style="border-bottom:1px solid #f0f0f0;background:${wR%2===0?"#f7f9fc":"#fff"}">
+        <td style="font-weight:700">#${wR}</td><td style="text-align:left;font-weight:600">${d}</td>
+        <td><span style="background:${cellBg(wS)};border-radius:5px;padding:2px 8px;font-weight:700">${wS.toFixed(1)}</span></td>
+        <td style="font-weight:700">#${oR}</td><td style="color:${grade(oS).c};font-weight:700">${oS.toFixed(1)}</td>
+        <td style="font-weight:700;color:${diff>3?"#059669":diff<-3?"#dc2626":"#6b7280"}">${diff===0?"—":diff>0?`+${diff} better`:`${diff} lower`}</td>
+      </tr>`;
+    }).join('');
+    return btns+`<div class="card"><div class="card-title">📅 Weekly Performance Rank</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Scored on 9 weekly metrics only. Reflects performance this specific week regardless of cumulative standing.</div>
+      ${barChartSVG(barData,chartW,300,{left:36,right:10,top:10,bottom:75})}
+    </div>
+    <div class="card"><div class="card-title">Weekly Rank vs Overall Rank</div><div class="ovx">
+      <table><thead><tr class="tbl-hdr"><th style="text-align:left">Wk Rank</th><th style="text-align:left">District</th><th>Wk Score</th><th>Overall Rank</th><th>Overall Score</th><th>Difference</th></tr></thead>
+      <tbody>${tblRows}</tbody></table></div></div>`;
+  }
+
+  // improved
+  const barData=IMPR.map(r=>({label:r.d,value:r.delta,color:r.delta>=0?"#10b981":"#f87171"}));
+  // for improvement chart we need different scale
+  const maxD=Math.max(...IMPR.map(r=>Math.abs(r.delta)),1);
+  const chartW2=Math.max(800,IMPR.length*28);
+  const H=280,ML=40,MR=10,MT=10,MB=70,pw=chartW2-ML-MR,ph=H-MT-MB;
+  const zero=MT+ph/2;
+  let bars2='',labels2='',lines2='';
+  lines2+=`<line x1="${ML}" y1="${zero}" x2="${chartW2-MR}" y2="${zero}" stroke="#374151" stroke-width="1.5"/>`;
+  IMPR.forEach((r,i)=>{ const bw=Math.max(pw/IMPR.length-3,4),x=ML+i*(pw/IMPR.length)+(pw/IMPR.length-bw)/2;
+    const scale=ph/2/maxD,bh=Math.abs(r.delta)*scale,y=r.delta>=0?zero-bh:zero;
+    bars2+=`<rect x="${x}" y="${y}" width="${bw}" height="${Math.max(bh,1)}" fill="${r.delta>=0?"#10b981":"#f87171"}" rx="2"/>`;
+    const lx=x+bw/2,ly=H-MB+5;
+    labels2+=`<text transform="rotate(-50,${lx},${ly})" x="${lx}" y="${ly}" text-anchor="end" font-size="9" fill="#374151">${r.d.length>12?r.d.substring(0,11)+'…':r.d}</text>`;
+  });
+  const chart2=`<div style="overflow-x:auto"><svg width="${chartW2}" height="${H}" style="display:block;min-width:${chartW2}px">${lines2}${bars2}${labels2}</svg></div>`;
+  const tblRows2=IMPR.map(({d,rank:iR,delta,curr,prev})=>{ const cR=RANKED.find(r=>r.d===d)?.rank;const pR=PRANKMAP[d];const rc=pR&&cR?pR-cR:null;
+    return `<tr class="clickable" onclick="goDetail('${d}')" style="border-bottom:1px solid #f0f0f0;background:${iR%2===0?"#f7f9fc":"#fff"}">
+      <td style="font-weight:700">#${iR}</td><td style="text-align:left;font-weight:600">${d}</td>
+      <td>${prev.toFixed(1)}</td><td style="font-weight:700;color:${grade(curr).c}">${curr.toFixed(1)}</td>
+      <td style="font-weight:800;color:${delta>=0?"#059669":"#dc2626"};font-size:13px">${delta>=0?"+":""}${delta.toFixed(1)}</td>
+      <td>#${pR}</td><td>#${cR}</td>
+      <td style="font-weight:700;color:${rc>0?"#059669":rc<0?"#dc2626":"#6b7280"}">${rc==null?"—":rc===0?"—":rc>0?`▲${rc}`:`▼${Math.abs(rc)}`}</td>
+    </tr>`;
+  }).join('');
+  const newUnits=D.filter(d=>!PRANKMAP[d]).map(d=>{ const {g,c,bg}=grade(COMP[d]);const cr=RANKED.find(r=>r.d===d)?.rank;
+    return `<span class="new-card" style="background:${bg}"><div style="font-weight:700;font-size:14px">${d}</div><div style="color:${c};font-weight:800;font-size:22px">${COMP[d].toFixed(1)}</div><div style="color:${c};font-size:13px">Grade ${g} · #${cr}</div></span>`;
+  }).join('');
+  return btns+`<div class="card"><div class="card-title">🚀 Most Improved This Week</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Ranked by composite score change vs week ending 25 Mar 2026. Green = improved, Red = declined.</div>
+    ${chart2}</div>
+  <div class="card"><div class="card-title">Score Change Detail</div><div class="ovx">
+    <table><thead><tr class="tbl-hdr"><th style="text-align:left">#</th><th style="text-align:left">District</th><th>Prev</th><th>Curr</th><th>Change</th><th>Prev Rank</th><th>Curr Rank</th><th>Rank Chg</th></tr></thead>
+    <tbody>${tblRows2}</tbody></table></div></div>
+  <div class="card"><div class="card-title">🆕 New Entrants This Week</div><div>${newUnits}</div></div>`;
+}
+
+function renderDetail() {
+  const d=state.sel, score=COMP[d];
+  const {g,c,bg,bd}=grade(score);
+  const distRank=RANKED.find(r=>r.d===d).rank;
+  const prevScore=PCOMP[d];
+  const delta=prevScore!=null?score-prevScore:null;
+  const mv=PRANKMAP[d]!=null?PRANKMAP[d]-distRank:null;
+  const mvStr=mv==null?'<span class="new-badge" style="font-size:12px">NEW ENTRANT</span>':mv>0?`<span class="up">▲${mv} ranks up</span>`:mv<0?`<span class="dn">▼${Math.abs(mv)} ranks down</span>`:'<span style="color:#6b7280">No rank change</span>';
+  const dStr=delta==null?'':delta>0?`<span class="up">↑+${delta.toFixed(1)} pts</span>`:delta<0?`<span class="dn">↓${delta.toFixed(1)} pts</span>`:'<span style="color:#6b7280">No change</span>';
+  const opts=RANKED.map(({d:dd,rank,score:ss})=>`<option value="${dd}" ${dd===d?"selected":""}>#${rank} ${dd} (${ss.toFixed(1)})</option>`).join('');
+  const catGrid=CATS.map(cat=>{ const cs=catScore(d,cat);const cg=grade(cs); return `<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:${cg.c}">${cs}</div><div style="font-size:10px;color:#6b7280;font-weight:600">${cat}</div></div>`; }).join('');
+  const totalW=PARAMS.reduce((s,p)=>s+p.w,0);
+  const tblRows=PARAMS.map(p=>{ const raw=RD[p.k][d]; const ns=NS[d][p.k]; const contrib=(ns*p.w)/totalW;
+    return `<tr style="border-bottom:1px solid #f0f0f0"><td style="text-align:left;font-weight:600;padding:8px">${p.l}</td>
+      <td><span style="background:#eff6ff;color:#1d4ed8;border-radius:5px;padding:2px 5px;font-size:10px">${p.cat}</span></td>
+      <td style="font-weight:500">${raw==null?'<span class="na">N/A</span>':typeof raw==="number"?raw.toFixed(2):raw}</td>
+      <td><span style="background:${cellBg(ns)};border-radius:5px;padding:3px 10px;font-weight:700">${ns.toFixed(1)}</span></td>
+      <td style="font-weight:700">${p.w}%</td><td style="font-weight:700;color:${grade(ns).c}">${contrib.toFixed(2)}</td>
+      <td style="text-align:left;color:#6b7280;font-size:11px">${p.lb?"⬇ Lower=Better":"⬆ Higher=Better"}</td>
+    </tr>`;
+  }).join('');
+  const hbarData=PARAMS.map(p=>({label:p.l.substring(0,14),value:NS[d][p.k]}));
+  return `<div style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <label style="font-weight:700">Select District:</label>
+    <select onchange="setState({sel:this.value})">${opts}</select>
+  </div>
+  <div class="card" style="background:linear-gradient(135deg,${bd}22,${bd}11);border:2px solid ${bd}55">
+    <div class="hero">
+      <div>
+        <div style="font-size:26px;font-weight:800">${d}</div>
+        <div style="color:#6b7280;font-size:13px">Overall Rank #${distRank} of ${D.length}</div>
+        <div style="margin-top:6px;display:flex;gap:10px">${mvStr} ${dStr}</div>
+      </div>
+      <div class="hero-grade" style="background:${bg};margin-left:auto">
+        <div class="g" style="color:${c}">${g}</div>
+        <div class="s" style="color:${c}">${score.toFixed(1)}<span style="font-size:12px;opacity:.6">/100</span></div>
+        ${prevScore!=null?`<div style="font-size:11px;color:#6b7280;margin-top:4px">Prev: ${prevScore.toFixed(1)}</div>`:""}
+      </div>
+      <div class="cat-grid">${catGrid}</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title" style="font-size:13px">Category Spider Chart</div><div class="radar-wrap">${radarSVG(d)}</div></div>
+    <div class="card"><div class="card-title" style="font-size:13px">Parameter Scores (0–100)</div>${horizBarSVG(hbarData)}</div>
+  </div>
+  <div class="card"><div class="card-title" style="font-size:13px">Raw Data & Score Breakdown</div><div class="ovx">
+    <table><thead><tr style="background:#f3f4f6">
+      <th style="text-align:left">Parameter</th><th>Cat</th><th>Raw Value</th><th>Norm Score</th><th>Wt</th><th>Contribution</th><th style="text-align:left">Direction</th>
+    </tr></thead><tbody>${tblRows}</tbody>
+    <tfoot><tr style="background:#0f2a52;color:#fff"><td colspan="5" style="padding:8px 10px;font-weight:700">COMPOSITE SCORE</td>
+      <td style="text-align:center;font-weight:800;font-size:16px;color:${bg}">${score.toFixed(1)}</td>
+      <td style="text-align:center;color:rgba(255,255,255,.7)">${g} Grade</td></tr></tfoot>
+    </table></div></div>`;
+}
+
+function renderMethodology() {
+  const rows=PARAMS.map((p,i)=>`<tr style="border-bottom:1px solid #f0f0f0;background:${i%2===0?"#fff":"#f7f9fc"}">
+    <td style="text-align:left;color:#9ca3af">${i+1}</td><td style="text-align:left;font-weight:600">${p.l}</td>
+    <td><span style="background:#eff6ff;color:#1d4ed8;border-radius:5px;padding:2px 7px;font-size:11px">${p.cat}</span></td>
+    <td style="font-weight:800;color:#1e40af">${p.w}%</td>
+    <td><span style="background:${p.wk?"#f0fdf4":"#f0f9ff"};color:${p.wk?"#166534":"#075985"};border-radius:4px;padding:1px 6px;font-size:11px">${p.wk?"Weekly":"Cumulative"}</span></td>
+    <td style="font-size:11px">${p.lb?"⬇ Lower=Better":"⬆ Higher=Better"}</td>
+  </tr>`).join('');
+  return `<div class="card"><div class="card-title">📊 Composite Scoring Methodology</div>
+    <p style="color:#374151;line-height:1.7;font-size:13px">30 police units evaluated across <strong>15 parameters</strong> from 9 Smart Policing applications. Raw values normalized to <strong>0–100</strong> using min-max normalization. Lower-is-better parameters are inverted. NATGRID and CriMAC are <strong>√-transformed</strong>. Null: <strong>0</strong> for activity metrics, <strong>50 (neutral)</strong> for structural metrics. Final score = weighted average.</p>
+  </div>
+  <div class="card"><div class="card-title">Parameter Weights</div><div class="ovx">
+    <table><thead><tr class="tbl-hdr"><th style="text-align:left">#</th><th style="text-align:left">Parameter</th><th>Category</th><th>Wt</th><th>Type</th><th>Direction</th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr style="background:#0f2a52;color:#fff"><td colspan="3" style="padding:8px;font-weight:700">TOTAL</td><td style="text-align:center;font-weight:800;font-size:14px">${PARAMS.reduce((s,p)=>s+p.w,0)}%</td><td colspan="2"></td></tr></tfoot>
+    </table></div></div>
+  <div class="grid2">
+    <div class="card"><div style="font-weight:700;font-size:14px;color:#dc2626;margin-bottom:8px">⚠️ Known Limitations</div><ul style="font-size:12px;line-height:1.9;padding-left:18px;color:#374151">
+      <li><strong>Markapuram & Polavaram</strong> — newly formed districts; parent district values used as proxy.</li>
+      <li><strong>CCTNS Forms/FIR</strong> — inflated for Markapuram/Polavaram. Capped at 15.</li>
+      <li><strong>ASR & Polavaram Dial 112 RT</strong> — hilly terrain (verified). Capped at 30 min for scoring.</li>
+      <li><strong>PVP Manyam Dial 112 RT</strong> — 37m 17s this week; capped at 30 min.</li>
+      <li><strong>MedLEaPR MLC%</strong> — hospital non-adoption, not unit negligence.</li>
+      <li><strong>eSakshya SID%</strong> — till-date %; units clearing backlog.</li>
+      <li><strong>Dial 112</strong> — GRP units have no control rooms; assigned neutral (50).</li>
+      <li><strong>Citizen Portal Pending%</strong> — fresh data provided for all 30 units for week ending 01 Apr 2026. GRP units reported &lt;1% (scored as 1%).</li>
+      <li><strong>No crime outcome data</strong> — scoring reflects technology adoption only.</li>
+    </ul></div>
+    <div class="card"><div style="font-weight:700;font-size:14px;color:#059669;margin-bottom:8px">💡 Recommended Additional Data</div><ul style="font-size:12px;line-height:1.9;padding-left:18px;color:#374151">
+      <li>Crime Resolution Rate</li><li>CCTNS Data Quality Score</li><li>MedLEaPR Report Turnaround</li>
+      <li>eSakshya Weekly Rate (new SIDs per new FIRs)</li><li>Dial 112 Dispatch Time</li>
+      <li>Preventive Action Yield</li><li>Drone Intelligence Yield</li>
+      <li>Citizen Satisfaction Score</li><li>Court Attendance Rate</li><li>Narcotics/Liquor Seizure Data</li>
+    </ul></div>
+  </div>
+  <div class="card" style="background:#eff6ff;border:1px solid #bfdbfe">
+    <div style="font-weight:700;color:#1d4ed8;margin-bottom:8px">🔵 Grade Scale</div>
+    <div class="legend"><span class="grade-A">A: ≥ 75</span><span class="grade-B">B: 62–74</span><span class="grade-C">C: 49–61</span><span class="grade-D">D: 36–48</span><span class="grade-E">E: &lt; 36</span></div>
+  </div>`;
+}
+
+// ─── MAIN RENDER ──────────────────────────────────────────────────────────────
+function render() {
+  const app=document.getElementById("app");
+  const TABS=[["rankings","🏆 Rankings"],["heatmap","🔥 Heatmap"],["trends","📈 Trends"],["detail","🔍 District Detail"],["methodology","📋 Methodology"]];
+  let content;
+  if(state.tab==="rankings")content=renderRankings();
+  else if(state.tab==="heatmap")content=renderHeatmap();
+  else if(state.tab==="trends")content=renderTrends();
+  else if(state.tab==="detail")content=renderDetail();
+  else content=renderMethodology();
+
+  app.innerHTML=`
+  <div class="header">
+    <div style="font-size:36px">🚔</div>
+    <div><div class="header-title">AP Smart Policing — Unit Performance Dashboard</div>
+    <div class="header-sub">Week 26 March – 01 April 2026 &nbsp;·&nbsp; 30 Police Units &nbsp;·&nbsp; 15 Parameters &nbsp;·&nbsp; Composite Weighted Scoring</div></div>
+    <div style="display:flex;gap:12px;margin-left:auto">
+      <div class="stat-box"><div class="lbl">UNITS</div><div class="num">${D.length}</div></div>
+      <div class="stat-box"><div class="lbl">PREV WEEK</div><div style="font-size:13px;font-weight:700;margin-top:4px">25 Mar 2026</div></div>
+    </div>
+  </div>
+  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#166534">
+    ✅ All 15 parameters updated with data for week ending <strong>01 April 2026</strong> — including fresh Citizen Portal Pending% for all 30 units.
+  </div>
+  <div class="tabs">${TABS.map(([k,l])=>`<button class="tab ${state.tab===k?"active":""}" onclick="setState({tab:'${k}'})">${l}</button>`).join('')}</div>
+  ${content}
+  <div style="text-align:center;color:#9ca3af;font-size:11px;margin-top:12px">Data: Smart Policing Performance Report — 02 April 2026 &nbsp;·&nbsp; Scoring Model v2.0 &nbsp;·&nbsp; 30 Units · 15 Parameters</div>
+  `;
+}
+
+function goDetail(d){ setState({tab:"detail",sel:d}); }
+render();
+</script>
+</body>
+</html>
